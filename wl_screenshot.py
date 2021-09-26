@@ -34,9 +34,9 @@ class MainWindow(Gtk.Window):
 
     def __init__(self, screenshot_directory: Path):
         super().__init__(title="wl_screenshot")
-        self.screenshot_directory = screenshot_directory
+        self.mode = None
+        self.screenshot_name = None
 
-        self.connect("destroy", Gtk.main_quit)
         self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.add(self.vbox)
         hbox = Gtk.Box(spacing=6)
@@ -57,10 +57,10 @@ class MainWindow(Gtk.Window):
         # select a name for the screenshot
         label = Gtk.Label(label="Screenshot Name:")
         self.vbox.pack_start(label, False, False, 0)
-        self.screenshot_name = Gtk.Entry()
+        self.entry_name = Gtk.Entry()
         default_name = str(int(time.time()))
-        self.screenshot_name.set_text(default_name)
-        self.vbox.pack_start(self.screenshot_name, False, False, 0)
+        self.entry_name.set_text(default_name)
+        self.vbox.pack_start(self.entry_name, False, False, 0)
 
         # cancel button
         self.btn_cancel = Gtk.Button(label="Cancel")
@@ -74,24 +74,23 @@ class MainWindow(Gtk.Window):
 
     def on_cancel(self, widget):
         """Called when the Cancel button is clicked"""
+        self.mode = None
         self.destroy()
 
     def on_ok(self, widget):
         """Called when the Ok button is clicked"""
-        screenshot_name = self.screenshot_name.get_text().strip()
-        if len(screenshot_name) <= 0:
-            screenshot_name = str(int(time.time()))
-        image_path = self.screenshot_directory.joinpath(
-                screenshot_name + ".png"
-        )
         if self.radio_btn_area.get_active():
-            capture_screen_area(image_path)
+            self.mode = "area"
         elif self.radio_btn_full_screen.get_active():
-            capture_full_screen(image_path)
+            self.mode = "full_screen"
+        self.screenshot_name = self.entry_name.get_text().strip()
+        if len(self.screenshot_name) <= 0:
+            self.screenshot_name = str(int(time.time()))
         self.destroy()
 
 
-if __name__ == "__main__":
+def main():
+    """Main function"""
     parser = argparse.ArgumentParser(
         description="Take screenshots under wayland."
     )
@@ -104,6 +103,19 @@ if __name__ == "__main__":
     if screenshot_directory.is_dir():
         win = MainWindow(screenshot_directory)
         win.show_all()
+        win.connect("destroy", Gtk.main_quit)
         Gtk.main()
+        image_path = screenshot_directory.joinpath(
+                str(win.screenshot_name) + '.png'
+        )
+        if win.mode == "area":
+            capture_screen_area(image_path)
+        elif win.mode == "full_screen":
+            capture_full_screen(image_path)
+
     else:
         print("Not a valid directory:", args.SCREENSHOT_DIRECTORY)
+
+
+if __name__ == "__main__":
+    main()
